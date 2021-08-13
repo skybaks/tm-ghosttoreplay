@@ -1,17 +1,13 @@
 
-string name = "";
+bool PermissionChecksPassed = false;
 string inputUrl = "";
 string savedMessage = "";
 bool triggerDownload = false;
 bool windowVisible = false;
 
-void log(string msg)
-{
-    print("[\\$9cf" + name + "\\$fff] " + msg);
-}
-
 void RenderMenu()
 {
+    if (!PermissionChecksPassed) return;
     if (UI::MenuItem("\\$999" + Icons::Download + "\\$z Ghost to Replay", "", windowVisible) && !windowVisible)
     {
         windowVisible = !windowVisible;
@@ -20,6 +16,7 @@ void RenderMenu()
 
 void RenderInterface()
 {
+    if (!PermissionChecksPassed) return;
     if (windowVisible)
     {
         UI::Begin("Ghost To Replay", windowVisible, UI::WindowFlags::NoCollapse | UI::WindowFlags::AlwaysAutoResize);
@@ -29,7 +26,6 @@ void RenderInterface()
         {
             UI::Text("Enter download URL for the Ghost");
             inputUrl = UI::InputText("Ghost URL", inputUrl);
-            UI::Text("\\$f99WARNING:\\$ccc An invalid URL will result in the game crashing");
             if (!triggerDownload && UI::Button("Create Replay"))
             {
                 triggerDownload = true;
@@ -67,16 +63,39 @@ CGameDataFileManagerScript@ TryGetDataFileMgr()
     return null;
 }
 
+bool HasPermission()
+{
+    bool hasPermission = true;
+    if (!Permissions::CreateLocalReplay())
+    {
+        error(Meta::ExecutingPlugin().Name + ": Missing permission client_CreateLocalReplay");
+        hasPermission = false;
+    }
+    if (!Permissions::OpenReplayEditor())
+    {
+        error(Meta::ExecutingPlugin().Name + ": Missing permission client_OpenReplayEditor");
+        hasPermission = false;
+    }
+    return hasPermission;
+}
+
 void Main()
 {
-    name = Meta::ExecutingPlugin().Name;
-    log("Initializing");
+    if (!HasPermission())
+    {
+        error("Insufficient permissions to use " + Meta::ExecutingPlugin().Name + ". Exiting...");
+        return;
+    }
+    else
+    {
+        PermissionChecksPassed = true;
+    }
 
     while (true)
     {
         if (triggerDownload)
         {
-            log("Download triggered for " + inputUrl);
+            print(Meta::ExecutingPlugin().Name + ": Download triggered for " + inputUrl);
             savedMessage = "";
             auto dataFileMgr = TryGetDataFileMgr();
             CTrackMania@ app = cast<CTrackMania>(GetApp());
@@ -95,23 +114,23 @@ void Main()
                 if (ghost !is null)
                 {
                     string safeMapName = StripFormatCodes(app.RootMap.MapName);
-                    string safeUserName = ""; // ghost.Nickname;
+                    string safeUserName = ghost.Nickname;
                     string safeCurrTime = Regex::Replace(app.OSLocalDate, "[/ ]", "_");
                     string fmtGhostTime = Time::Format(ghost.Result.Time);
                     string replayName = safeMapName + "_" + safeUserName + "_" + safeCurrTime + "_(" + fmtGhostTime + ")";
                     string replayPath = "Downloaded/" + replayName;
                     savedMessage = "Saving replay to " + replayPath + ".Replay.Gbx";
-                    log(savedMessage);
+                    print(Meta::ExecutingPlugin().Name + ": " + savedMessage);
                     dataFileMgr.Replay_Save(replayPath, app.RootMap, ghost);
                 }
                 else
                 {
-                    log("Download Failed");
+                    error(Meta::ExecutingPlugin().Name + ": Download Failed");
                 }
             }
             else
             {
-                log("Failed");
+                error(Meta::ExecutingPlugin().Name + ": Failed");
             }
             triggerDownload = false;
         }
