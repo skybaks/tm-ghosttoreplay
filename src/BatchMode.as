@@ -88,6 +88,7 @@ CGameCtnChallenge@ DownloadMap(const string&in uid)
 
     auto@ fidFolder = Fids::GetUserFolder("Maps/Downloaded/GhostToReplayBatch");
     Fids::UpdateTree(fidFolder, false);
+    yield();
     auto@ fidFile = Fids::GetFidsFile(fidFolder, uid + ".Map.Gbx");
     if (fidFile is null) { error("Error map fid was null for " + uid); return null; }
     return cast<CGameCtnChallenge@>(Fids::Preload(fidFile));
