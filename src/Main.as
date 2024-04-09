@@ -78,15 +78,29 @@ bool HasPermission()
     bool hasPermission = true;
     if (!Permissions::CreateLocalReplay())
     {
-        error(Meta::ExecutingPlugin().Name + ": Missing permission client_CreateLocalReplay");
+        error("Missing permission client_CreateLocalReplay");
         hasPermission = false;
     }
     if (!Permissions::OpenReplayEditor())
     {
-        error(Meta::ExecutingPlugin().Name + ": Missing permission client_OpenReplayEditor");
+        error("Missing permission client_OpenReplayEditor");
         hasPermission = false;
     }
     return hasPermission;
+}
+
+string GetReplayFilename(CGameGhostScript@ ghost, CGameCtnChallenge@ map)
+{
+    if (ghost is null || map is null)
+    {
+        error("Error getting replay filename, ghost or map input is null");
+        return "";
+    }
+    string safeMapName = StripFormatCodes(map.MapName);
+    string safeUserName = ghost.Nickname;
+    string safeCurrTime = Regex::Replace(GetApp().OSLocalDate, "[/ ]", "_");
+    string fmtGhostTime = Time::Format(ghost.Result.Time);
+    return safeMapName + "_" + safeUserName + "_" + safeCurrTime + "_(" + fmtGhostTime + ")";
 }
 
 void Main()
@@ -111,7 +125,7 @@ void Main()
             }
             else
             {
-                print(Meta::ExecutingPlugin().Name + ": Download triggered for " + inputUrl);
+                print("Download triggered for " + inputUrl);
                 savedMessage = "";
                 auto dataFileMgr = TryGetDataFileMgr();
                 CTrackMania@ app = cast<CTrackMania>(GetApp());
@@ -129,24 +143,20 @@ void Main()
                     CGameGhostScript@ ghost = cast<CGameGhostScript>(result.Ghost);
                     if (ghost !is null)
                     {
-                        string safeMapName = StripFormatCodes(app.RootMap.MapName);
-                        string safeUserName = ghost.Nickname;
-                        string safeCurrTime = Regex::Replace(app.OSLocalDate, "[/ ]", "_");
-                        string fmtGhostTime = Time::Format(ghost.Result.Time);
-                        string replayName = safeMapName + "_" + safeUserName + "_" + safeCurrTime + "_(" + fmtGhostTime + ")";
+                        string replayName = GetReplayFilename(ghost, app.RootMap);;
                         string replayPath = "Downloaded/" + replayName;
                         savedMessage = "Saving replay to " + replayPath + ".Replay.Gbx";
-                        print(Meta::ExecutingPlugin().Name + ": " + savedMessage);
+                        print(savedMessage);
                         dataFileMgr.Replay_Save(replayPath, app.RootMap, ghost);
                     }
                     else
                     {
-                        error(Meta::ExecutingPlugin().Name + ": Download Failed");
+                        error("Download Failed");
                     }
                 }
                 else
                 {
-                    error(Meta::ExecutingPlugin().Name + ": Failed");
+                    error("Failed");
                 }
             }
             triggerDownload = false;

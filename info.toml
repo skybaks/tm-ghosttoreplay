@@ -4,4 +4,4 @@ author = "skybaxrider"
 category = "Utilities"
 blocks = [ "Plugin_GhostToReplay" ]
 siteid = 62
-version = "1.2"
+version = "1.2.0"

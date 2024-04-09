@@ -3,8 +3,18 @@ string g_batchModeText = "";
 
 void BatchModeInterface()
 {
+    UI::TextWrapped(
+        "To create replays in batch, input Map Uid and Ghost WebServices Id separated by semi-colon (;). For example:\n"
+        "\n"
+        "DG0d5RcL2wYeRfM44qokhvvrH00; c758570f-b8bc-4300-9d79-1b583f1b25b1\n"
+        "x3yEC7QjBZdvROEt0tmDe0KzMqf; 354ca171-eb4c-4d75-a1db-cc62477986e5\n"
+        "ZnnV55ZvskhuU2fO7m1Dkw4Ofu6; 9e3231b5-97de-45bf-8cfa-ff05f0abd900\n"
+        "\n"
+        "Watch the Openplanet log for progress during batch execution."
+    );
+    UI::Dummy(vec2(10, 10));
     UI::BeginDisabled(triggerDownload);
-    g_batchModeText = UI::InputTextMultiline("##batchModeInput", g_batchModeText);
+    g_batchModeText = UI::InputTextMultiline("##batchModeInput", g_batchModeText, vec2(500, 200));
     if (UI::Button("Execute"))
     {
         triggerDownload = true;
@@ -46,8 +56,9 @@ void CreateReplay(const string&in mapUid, const string&in ghostId)
         return;
     }
 
-    string replayPath = "Downloaded/GhostToReplayBatch/" + mapUid + "_" + ghostId + ".Replay.Gbx";
-    print("Creating replay at " + replayPath);
+    string replayName = GetReplayFilename(gst, map);
+    string replayPath = "Downloaded/" + replayName;
+    print("Creating replay at " + replayPath + ".Replay.Gbx");
     cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp.DataFileMgr.Replay_Save(replayPath, map, gst);
 }
 
