@@ -1,4 +1,7 @@
 
+[Setting category="General" name="Enable Batch Mode"]
+bool Setting_EnableBatchMode = false;
+
 bool PermissionChecksPassed = false;
 string inputUrl = "";
 string savedMessage = "";
@@ -21,24 +24,31 @@ void RenderInterface()
     {
         UI::Begin("Ghost To Replay", windowVisible, UI::WindowFlags::NoCollapse | UI::WindowFlags::AlwaysAutoResize);
 
-        CTrackMania@ app = cast<CTrackMania>(GetApp());
-        if (app.RootMap !is null)
+        if (Setting_EnableBatchMode)
         {
-            UI::Text("Enter download URL for the Ghost");
-            inputUrl = UI::InputText("Ghost URL", inputUrl);
-            if (!triggerDownload && UI::Button("Create Replay"))
-            {
-                triggerDownload = true;
-            }
-            if (savedMessage != "")
-            {
-                UI::Text(savedMessage);
-            }
+            BatchModeInterface();
         }
         else
         {
-            UI::Text("Play the track you want to combine the ghost with");
-            savedMessage = "";
+            CTrackMania@ app = cast<CTrackMania>(GetApp());
+            if (app.RootMap !is null)
+            {
+                UI::Text("Enter download URL for the Ghost");
+                inputUrl = UI::InputText("Ghost URL", inputUrl);
+                if (!triggerDownload && UI::Button("Create Replay"))
+                {
+                    triggerDownload = true;
+                }
+                if (savedMessage != "")
+                {
+                    UI::Text(savedMessage);
+                }
+            }
+            else
+            {
+                UI::Text("Play the track you want to combine the ghost with");
+                savedMessage = "";
+            }
         }
 
         UI::End();
@@ -68,15 +78,29 @@ bool HasPermission()
     bool hasPermission = true;
     if (!Permissions::CreateLocalReplay())
     {
-        error(Meta::ExecutingPlugin().Name + ": Missing permission client_CreateLocalReplay");
+        error("Missing permission client_CreateLocalReplay");
         hasPermission = false;
     }
     if (!Permissions::OpenReplayEditor())
     {
-        error(Meta::ExecutingPlugin().Name + ": Missing permission client_OpenReplayEditor");
+        error("Missing permission client_OpenReplayEditor");
         hasPermission = false;
     }
     return hasPermission;
+}
+
+string GetReplayFilename(CGameGhostScript@ ghost, CGameCtnChallenge@ map)
+{
+    if (ghost is null || map is null)
+    {
+        error("Error getting replay filename, ghost or map input is null");
+        return "";
+    }
+    string safeMapName = StripFormatCodes(map.MapName);
+    string safeUserName = ghost.Nickname;
+    string safeCurrTime = Regex::Replace(GetApp().OSLocalDate, "[/ ]", "_");
+    string fmtGhostTime = Time::Format(ghost.Result.Time);
+    return safeMapName + "_" + safeUserName + "_" + safeCurrTime + "_(" + fmtGhostTime + ")";
 }
 
 void Main()
@@ -95,42 +119,45 @@ void Main()
     {
         if (triggerDownload)
         {
-            print(Meta::ExecutingPlugin().Name + ": Download triggered for " + inputUrl);
-            savedMessage = "";
-            auto dataFileMgr = TryGetDataFileMgr();
-            CTrackMania@ app = cast<CTrackMania>(GetApp());
-            if (dataFileMgr !is null && app.RootMap !is null && inputUrl != "")
+            if (Setting_EnableBatchMode)
             {
-                CWebServicesTaskResult_GhostScript@ result = dataFileMgr.Ghost_Download("", inputUrl);
-                inputUrl = "";
-                uint timeout = 20000;
-                uint currentTime = 0;
-                while (result.Ghost is null && currentTime < timeout)
-                {
-                    currentTime += 100;
-                    sleep(100);
-                }
-                CGameGhostScript@ ghost = cast<CGameGhostScript>(result.Ghost);
-                if (ghost !is null)
-                {
-                    string safeMapName = StripFormatCodes(app.RootMap.MapName);
-                    string safeUserName = ghost.Nickname;
-                    string safeCurrTime = Regex::Replace(app.OSLocalDate, "[/ ]", "_");
-                    string fmtGhostTime = Time::Format(ghost.Result.Time);
-                    string replayName = safeMapName + "_" + safeUserName + "_" + safeCurrTime + "_(" + fmtGhostTime + ")";
-                    string replayPath = "Downloaded/" + replayName;
-                    savedMessage = "Saving replay to " + replayPath + ".Replay.Gbx";
-                    print(Meta::ExecutingPlugin().Name + ": " + savedMessage);
-                    dataFileMgr.Replay_Save(replayPath, app.RootMap, ghost);
-                }
-                else
-                {
-                    error(Meta::ExecutingPlugin().Name + ": Download Failed");
-                }
+                BatchModeExecute();
             }
             else
             {
-                error(Meta::ExecutingPlugin().Name + ": Failed");
+                print("Download triggered for " + inputUrl);
+                savedMessage = "";
+                auto dataFileMgr = TryGetDataFileMgr();
+                CTrackMania@ app = cast<CTrackMania>(GetApp());
+                if (dataFileMgr !is null && app.RootMap !is null && inputUrl != "")
+                {
+                    CWebServicesTaskResult_GhostScript@ result = dataFileMgr.Ghost_Download("", inputUrl);
+                    inputUrl = "";
+                    uint timeout = 20000;
+                    uint currentTime = 0;
+                    while (result.Ghost is null && currentTime < timeout)
+                    {
+                        currentTime += 100;
+                        sleep(100);
+                    }
+                    CGameGhostScript@ ghost = cast<CGameGhostScript>(result.Ghost);
+                    if (ghost !is null)
+                    {
+                        string replayName = GetReplayFilename(ghost, app.RootMap);;
+                        string replayPath = "Downloaded/" + replayName;
+                        savedMessage = "Saving replay to " + replayPath + ".Replay.Gbx";
+                        print(savedMessage);
+                        dataFileMgr.Replay_Save(replayPath, app.RootMap, ghost);
+                    }
+                    else
+                    {
+                        error("Download Failed");
+                    }
+                }
+                else
+                {
+                    error("Failed");
+                }
             }
             triggerDownload = false;
         }
