@@ -64,37 +64,44 @@ void CreateReplay(const string&in mapUid, const string&in ghostId)
 
 CGameCtnChallenge@ DownloadMap(const string&in uid)
 {
-    auto@ menuCustom = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp;
-    auto@ task = menuCustom.DataFileMgr.Map_NadeoServices_GetFromUid(menuCustom.UserMgr.Users[0].Id, uid);
-    while (task.IsProcessing)
+    if (IO::FileExists(IO::FromUserGameFolder("Maps/Downloaded/GhostToReplayBatch/" + uid + ".Map.Gbx")))
     {
-        yield();
+        print("Map already exists, skipping download. Delete Maps/Downloaded/GhostToReplayBatch to force re-download if desired");
     }
-
-    if (!task.HasSucceeded)
+    else
     {
-        error("Error getting map file url for " + uid);
-        return null;
-    }
+        auto@ menuCustom = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp;
+        auto@ task = menuCustom.DataFileMgr.Map_NadeoServices_GetFromUid(menuCustom.UserMgr.Users[0].Id, uid);
+        while (task.IsProcessing)
+        {
+            yield();
+        }
 
-    string url = task.Map.FileUrl;
+        if (!task.HasSucceeded)
+        {
+            error("Error getting map file url for " + uid);
+            return null;
+        }
 
-    print("HTTP Get to " + url);
-    auto@ response = Net::HttpGet(url);
-    while (!response.Finished())
-    {
-        yield();
-    }
+        string url = task.Map.FileUrl;
 
-    print("Returned code " + tostring(response.ResponseCode()));
+        print("HTTP Get to " + url);
+        auto@ response = Net::HttpGet(url);
+        while (!response.Finished())
+        {
+            yield();
+        }
 
-    if (response.Error() == "")
-    {
-        string path = IO::FromUserGameFolder("Maps/Downloaded/GhostToReplayBatch");
-        IO::CreateFolder(path);
-        string filePath = path + "/" + uid + ".Map.Gbx";
-        print("Saving to " + filePath);
-        response.SaveToFile(filePath);
+        print("Returned code " + tostring(response.ResponseCode()));
+
+        if (response.Error() == "")
+        {
+            string path = IO::FromUserGameFolder("Maps/Downloaded/GhostToReplayBatch");
+            IO::CreateFolder(path);
+            string filePath = path + "/" + uid + ".Map.Gbx";
+            print("Saving to " + filePath);
+            response.SaveToFile(filePath);
+        }
     }
 
     auto@ fidFolder = Fids::GetUserFolder("Maps/Downloaded/GhostToReplayBatch");
