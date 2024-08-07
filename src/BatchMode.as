@@ -97,7 +97,12 @@ CGameCtnChallenge@ DownloadMap(const string&in uid)
         if (response.Error() == "")
         {
             string path = IO::FromUserGameFolder("Maps/Downloaded/GhostToReplayBatch");
-            IO::CreateFolder(path);
+            if (!IO::FolderExists(path))
+            {
+                IO::CreateFolder(path);
+                Fids::UpdateTree(Fids::GetUserFolder("Maps/Downloaded"));
+                yield();
+            }
             string filePath = path + "/" + uid + ".Map.Gbx";
             print("Saving to " + filePath);
             response.SaveToFile(filePath);
@@ -114,10 +119,17 @@ CGameCtnChallenge@ DownloadMap(const string&in uid)
 
 CGameGhostScript@ DownloadGhost(const string&in ghostId)
 {
-    string baseUrl = "https://trackmania.io/api/download/ghost/";
+    string baseUrl = "https://core.trackmania.nadeo.live/mapRecords/";
+    string tailUrl = "/replay";
+    string url = baseUrl + ghostId + tailUrl;
+    if (Setting_BatchModeGhostUrlNoise)
+    {
+        string noiseFragment = Crypto::RandomBase64(12, url: true);
+        url += "#" + noiseFragment;
+    }
 
     auto@ menuCustom = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp;
-    auto@ task = menuCustom.DataFileMgr.Ghost_Download("", baseUrl + ghostId);
+    auto@ task = menuCustom.DataFileMgr.Ghost_Download("", url);
 
     while (task.IsProcessing)
     {

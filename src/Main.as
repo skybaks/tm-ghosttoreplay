@@ -2,6 +2,9 @@
 [Setting category="General" name="Enable Batch Mode"]
 bool Setting_EnableBatchMode = false;
 
+[Setting category="General" name="Batch Mode: Add noise to ghost download URLs" description="This works around the game's built-in ghost caching system so that new ghosts with the same ID can be downloaded."]
+bool Setting_BatchModeGhostUrlNoise = true;
+
 bool PermissionChecksPassed = false;
 string inputUrl = "";
 string savedMessage = "";
@@ -96,7 +99,7 @@ string GetReplayFilename(CGameGhostScript@ ghost, CGameCtnChallenge@ map)
         error("Error getting replay filename, ghost or map input is null");
         return "";
     }
-    string safeMapName = StripFormatCodes(map.MapName);
+    string safeMapName = Text::StripFormatCodes(map.MapName);
     string safeUserName = ghost.Nickname;
     string safeCurrTime = Regex::Replace(GetApp().OSLocalDate, "[/ ]", "_");
     string fmtGhostTime = Time::Format(ghost.Result.Time);
