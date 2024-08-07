@@ -121,8 +121,12 @@ CGameGhostScript@ DownloadGhost(const string&in ghostId)
 {
     string baseUrl = "https://core.trackmania.nadeo.live/mapRecords/";
     string tailUrl = "/replay";
-    string noiseFragment = Crypto::RandomBase64(12, url: true);
-    string url = baseUrl + ghostId + tailUrl + "#" + noiseFragment;
+    string url = baseUrl + ghostId + tailUrl;
+    if (Setting_BatchModeGhostUrlNoise)
+    {
+        string noiseFragment = Crypto::RandomBase64(12, url: true);
+        url += "#" + noiseFragment;
+    }
 
     auto@ menuCustom = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp;
     auto@ task = menuCustom.DataFileMgr.Ghost_Download("", url);

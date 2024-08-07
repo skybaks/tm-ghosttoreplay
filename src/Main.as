@@ -2,6 +2,9 @@
 [Setting category="General" name="Enable Batch Mode"]
 bool Setting_EnableBatchMode = false;
 
+[Setting category="General" name="Batch Mode: Add noise to ghost download URLs" description="This works around the game's built-in ghost caching system so that new ghosts with the same ID can be downloaded."]
+bool Setting_BatchModeGhostUrlNoise = true;
+
 bool PermissionChecksPassed = false;
 string inputUrl = "";
 string savedMessage = "";
