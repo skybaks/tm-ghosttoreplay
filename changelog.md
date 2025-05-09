@@ -1,3 +1,7 @@
+# 1.4.1
+
+* Update batch mode ghost base URL to prod.trackmania.core.nadeo.online
+
 # 1.4.0
 
 * Batch mode now uses Trackmania API URL for ghost download rather than TM.IO
