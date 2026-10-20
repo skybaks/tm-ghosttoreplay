@@ -10,6 +10,10 @@ void BatchModeInterface()
         "x3yEC7QjBZdvROEt0tmDe0KzMqf; 354ca171-eb4c-4d75-a1db-cc62477986e5\n"
         "ZnnV55ZvskhuU2fO7m1Dkw4Ofu6; 9e3231b5-97de-45bf-8cfa-ff05f0abd900\n"
         "\n"
+        "For ghosts and maps that are not on Nadeo services, use a full URL instead of the Ghost Id, and add the map URL as a third value:\n"
+        "\n"
+        "DG0d5RcL2wYeRfM44qokhvvrH00; https://example.com/run.Ghost.Gbx; https://example.com/map.Map.Gbx\n"
+        "\n"
         "Watch the Openplanet log for progress during batch execution."
     );
     UI::Dummy(vec2(10, 10));
@@ -30,17 +34,26 @@ void BatchModeExecute()
         string[] elements = lines[i].Split(";");
         if (elements.Length == 2)
         {
-            CreateReplay(elements[0].Trim(), elements[1].Trim());
+            CreateReplay(elements[0].Trim(), elements[1].Trim(), "");
+        }
+        else if (elements.Length == 3)
+        {
+            CreateReplay(elements[0].Trim(), elements[1].Trim(), elements[2].Trim());
         }
     }
     g_batchModeText = "";
     print("Execute complete");
 }
 
-void CreateReplay(const string&in mapUid, const string&in ghostId)
+bool IsUrl(const string&in value)
+{
+    return value.StartsWith("https://") || value.StartsWith("http://");
+}
+
+void CreateReplay(const string&in mapUid, const string&in ghostId, const string&in mapUrl)
 {
     print("Downloading map = " + mapUid);
-    auto@ map = DownloadMap(mapUid);
+    auto@ map = DownloadMap(mapUid, mapUrl);
     print("Downloading ghost = " + ghostId);
     auto@ gst = DownloadGhost(ghostId);
 
@@ -62,7 +75,7 @@ void CreateReplay(const string&in mapUid, const string&in ghostId)
     cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp.DataFileMgr.Replay_Save(replayPath, map, gst);
 }
 
-CGameCtnChallenge@ DownloadMap(const string&in uid)
+CGameCtnChallenge@ DownloadMap(const string&in uid, const string&in mapUrl)
 {
     if (IO::FileExists(IO::FromUserGameFolder("Maps/Downloaded/GhostToReplayBatch/" + uid + ".Map.Gbx")))
     {
@@ -70,20 +83,24 @@ CGameCtnChallenge@ DownloadMap(const string&in uid)
     }
     else
     {
-        auto@ menuCustom = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp;
-        auto@ task = menuCustom.DataFileMgr.Map_NadeoServices_GetFromUid(menuCustom.UserMgr.Users[0].Id, uid);
-        while (task.IsProcessing)
+        string url = mapUrl;
+        if (url == "")
         {
-            yield();
-        }
+            auto@ menuCustom = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp;
+            auto@ task = menuCustom.DataFileMgr.Map_NadeoServices_GetFromUid(menuCustom.UserMgr.Users[0].Id, uid);
+            while (task.IsProcessing)
+            {
+                yield();
+            }
 
-        if (!task.HasSucceeded)
-        {
-            error("Error getting map file url for " + uid);
-            return null;
-        }
+            if (!task.HasSucceeded)
+            {
+                error("Error getting map file url for " + uid);
+                return null;
+            }
 
-        string url = task.Map.FileUrl;
+            url = task.Map.FileUrl;
+        }
 
         print("HTTP Get to " + url);
         auto@ response = Net::HttpGet(url);
@@ -119,9 +136,11 @@ CGameCtnChallenge@ DownloadMap(const string&in uid)
 
 CGameGhostScript@ DownloadGhost(const string&in ghostId)
 {
-    string baseUrl = "https://prod.trackmania.core.nadeo.online/mapRecords/";
-    string tailUrl = "/replay";
-    string url = baseUrl + ghostId + tailUrl;
+    string url = ghostId;
+    if (!IsUrl(ghostId))
+    {
+        url = "https://prod.trackmania.core.nadeo.online/mapRecords/" + ghostId + "/replay";
+    }
     if (Setting_BatchModeGhostUrlNoise)
     {
         string noiseFragment = Crypto::RandomBase64(12, url: true);
